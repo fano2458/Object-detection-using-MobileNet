@@ -24,30 +24,33 @@ while True:
 
     with torch.no_grad():
         bboxes = cellboxes_to_boxes(model(image))
-        bboxes = non_max_suppression(bboxes[0], iou_threshold=0.5, threshold=0.4, box_format="midpoint")
+        bboxes = non_max_suppression(bboxes[0], iou_threshold=0.4, threshold=0.25, box_format="midpoint")
 
-    # print(len(bboxes))
+    print(len(bboxes))
     try:
-        cls, conf, x, y, w, h = bboxes[0]
+        for idx, bbox in enumerate(bboxes):
+            cls, conf, x, y, w, h = bboxes[idx]
 
-        img_h, img_w, img_ch = frame.shape
+            img_h, img_w, img_ch = frame.shape
 
-        x_img = x * img_w
-        y_img = y * img_h
-        w_img = w * img_w
-        h_img = h * img_h
+            x_img = x * img_w
+            y_img = y * img_h
+            w_img = w * img_w
+            h_img = h * img_h
 
-        tl_x = int(x_img - w_img // 2)
-        tl_y = int(y_img - h_img // 2)
-        br_x = int(x_img + w_img // 2)
-        br_y = int(y_img + h_img // 2)
+            tl_x = int(x_img - w_img // 2)
+            tl_y = int(y_img - h_img // 2)
+            br_x = int(x_img + w_img // 2)
+            br_y = int(y_img + h_img // 2)
 
-        cv2.rectangle(frame, (tl_x, tl_y), (br_x, br_y), (255, 0, 255), 2, -1)
+            print("class", cls)
+            cv2.rectangle(frame, (tl_x, tl_y), (br_x, br_y), (255, 0, 255), 2, -1)
     except IndexError:
         print("no detections")
 
     cv2.imwrite(f'output/frame_{count}.png', frame)
-
+    print(f"frame_{count} ended")
+    print("###########################")
     if count > 10:
         break
 
