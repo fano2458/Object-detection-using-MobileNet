@@ -35,7 +35,7 @@ WEIGHT_DECAY = 0
 EPOCHS = 1000
 NUM_WORKERS = 2
 PIN_MEMORY = True
-LOAD_MODEL = True
+LOAD_MODEL = False
 LOAD_MODEL_FILE = "weights/ssd_lite_43.pht"
 IMG_DIR = "data/images"
 LABEL_DIR = "data/labels"
@@ -51,7 +51,7 @@ class Compose(object):
 
         return img, bboxes
 
-
+# TODO add normalization, augmentations (on both images & bboxes)
 transform = Compose([transforms.Resize((320, 320)), transforms.ToTensor(),])
 
 
@@ -85,6 +85,7 @@ def main():
     if LOAD_MODEL:
         load_checkpoint(torch.load(LOAD_MODEL_FILE), model, optimizer)
 
+    # TODO remove not needed classes from the dataset (by keeping only needed labels)
     train_dataset = VOCDataset(
         "data/train.csv",
         transform=transform,
@@ -115,45 +116,44 @@ def main():
     )
     best_prec_test = 0
 
+    # TODO add lr scheduling, early stopping
     for epoch in range(EPOCHS):
-        for x, y in test_loader:
-           x = x.to(DEVICE)
-           for idx in range(8):
-               bboxes = cellboxes_to_boxes(model(x))
-               bboxes = non_max_suppression(bboxes[idx], iou_threshold=0.5, threshold=0.4, box_format="midpoint")
-               plot_image(x[idx].permute(1,2,0).to("cpu"), bboxes)
+        # for x, y in test_loader:
+        #    x = x.to(DEVICE)
+        #    for idx in range(8):
+        #        bboxes = cellboxes_to_boxes(model(x))
+        #        bboxes = non_max_suppression(bboxes[idx], iou_threshold=0.5, threshold=0.4, box_format="midpoint")
+        #        plot_image(x[idx].permute(1,2,0).to("cpu"), bboxes)
 
-           import sys
-           sys.exit()
+        #    import sys
+        #    sys.exit()
 
-        # pred_boxes, target_boxes = get_bboxes(
-        #     train_loader, model, iou_threshold=0.5, threshold=0.4
-        # )
+        pred_boxes, target_boxes = get_bboxes(
+            train_loader, model, iou_threshold=0.5, threshold=0.4
+        )
 
-        # mean_avg_prec = mean_average_precision(
-        #     pred_boxes, target_boxes, iou_threshold=0.5, box_format="midpoint"
-        # )
+        mean_avg_prec = mean_average_precision(
+            pred_boxes, target_boxes, iou_threshold=0.5, box_format="midpoint"
+        )
 
-        # print("#######################\n")
-        # print("Stats for epoch", epoch)
+        print("#######################\n")
+        print("Stats for epoch", epoch)
 
-        # print(f"Train mAP: {mean_avg_prec}")
+        print(f"Train mAP: {mean_avg_prec}")
 
-        # # if epoch % 5 == 0: # evaluate model every 5 epochs
+        pred_boxes_test, target_boxes_test = get_bboxes(
+            test_loader, model, iou_threshold=0.5, threshold=0.4
+        )
 
-        # pred_boxes_test, target_boxes_test = get_bboxes(
-        #     test_loader, model, iou_threshold=0.5, threshold=0.4
-        # )
+        mean_anv_prec_test = mean_average_precision(
+            pred_boxes_test, target_boxes_test, iou_threshold=0.5, box_format="midpoint"
+        )
 
-        # mean_anv_prec_test = mean_average_precision(
-        #     pred_boxes_test, target_boxes_test, iou_threshold=0.5, box_format="midpoint"
-        # )
+        print(f"Test mAP: {mean_anv_prec_test}")
 
-        # print(f"Test mAP: {mean_anv_prec_test}")
+        torch.save(model.state_dict(), f"weights/ssd_lite_{epoch}.pht")
 
-        # torch.save(model.state_dict(), f"weights/ssd_lite_{epoch}.pht")
-
-        # print("#######################\n")
+        print("#######################\n")
 
         # if mean_anv_prec_test > best_prec_test:
         #     best_prec_test = mean_anv_prec_test
@@ -169,7 +169,7 @@ def main():
         #    import time
         #    time.sleep(10)
 
-        # train_fn(train_loader, model, optimizer, loss_fn)
+        train_fn(train_loader, model, optimizer, loss_fn)
 
 
 if __name__ == "__main__":
