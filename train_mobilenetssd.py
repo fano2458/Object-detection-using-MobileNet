@@ -1,15 +1,9 @@
-"""
-Main file for training Yolo model on Pascal VOC dataset
-
-"""
-
 import torch
 import torchvision.transforms as transforms
 import torch.optim as optim
 import torchvision.transforms.functional as FT
 from tqdm import tqdm
 from torch.utils.data import DataLoader
-# from src.model import Yolov1
 from src.model_mobile import Detector
 from src.dataset import VOCDataset
 from src.utils import (
@@ -52,7 +46,7 @@ class Compose(object):
 
         return img, bboxes
 
-
+# TODO add normalization, augmentations (on both images & bboxes)
 transform = Compose([transforms.Resize((480, 480)), transforms.ToTensor(),])
 
 
@@ -133,6 +127,34 @@ def main():
 
         #    import sys
         #    sys.exit()
+        train_fn(train_loader, model, optimizer, loss_fn)
+
+        pred_boxes, target_boxes = get_bboxes(
+            train_loader, model, iou_threshold=0.5, threshold=0.4
+        )
+
+        mean_avg_prec = mean_average_precision(
+            pred_boxes, target_boxes, iou_threshold=0.5, box_format="midpoint"
+        )
+
+        print("#######################\n")
+        print("Stats for epoch", epoch)
+
+        print(f"Train mAP: {mean_avg_prec}")
+
+        pred_boxes_test, target_boxes_test = get_bboxes(
+            test_loader, model, iou_threshold=0.5, threshold=0.4
+        )
+
+        mean_anv_prec_test = mean_average_precision(
+            pred_boxes_test, target_boxes_test, iou_threshold=0.5, box_format="midpoint"
+        )
+
+        print(f"Test mAP: {mean_anv_prec_test}")
+
+        torch.save(model.state_dict(), f"weights/ssd_lite_{epoch}.pht")
+
+        print("#######################\n")
 
         # if mean_anv_prec_test > best_prec_test:
         #     best_prec_test = mean_anv_prec_test
