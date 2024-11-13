@@ -28,14 +28,14 @@ seed = 123
 torch.manual_seed(seed)
 
 # Hyperparameters etc. 
-LEARNING_RATE = 2e-5
+LEARNING_RATE = 3e-4
 DEVICE = "cuda" if torch.cuda.is_available else "cpu"
-BATCH_SIZE = 32 # 64 in original paper but I don't have that much vram, grad accum?
-WEIGHT_DECAY = 0
-EPOCHS = 1000
+BATCH_SIZE = 16 # 64 in original paper but I don't have that much vram, grad accum?
+WEIGHT_DECAY = 3e-5
+EPOCHS = 500
 NUM_WORKERS = 2
 PIN_MEMORY = True
-LOAD_MODEL = True
+LOAD_MODEL = False
 LOAD_MODEL_FILE = "weights/ssd_lite_43.pht"
 IMG_DIR = "data/images"
 LABEL_DIR = "data/labels"
@@ -52,7 +52,7 @@ class Compose(object):
         return img, bboxes
 
 
-transform = Compose([transforms.Resize((320, 320)), transforms.ToTensor(),])
+transform = Compose([transforms.Resize((480, 480)), transforms.ToTensor(),])
 
 
 def train_fn(train_loader, model, optimizer, loss_fn):
@@ -75,7 +75,6 @@ def train_fn(train_loader, model, optimizer, loss_fn):
 
 
 def main():
-    # model = Yolov1(split_size=7, num_boxes=2, num_classes=20).to(DEVICE)
     model = Detector().to(DEVICE)
     optimizer = optim.Adam(
         model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
@@ -116,44 +115,15 @@ def main():
     best_prec_test = 0
 
     for epoch in range(EPOCHS):
-        for x, y in test_loader:
-           x = x.to(DEVICE)
-           for idx in range(8):
-               bboxes = cellboxes_to_boxes(model(x))
-               bboxes = non_max_suppression(bboxes[idx], iou_threshold=0.5, threshold=0.4, box_format="midpoint")
-               plot_image(x[idx].permute(1,2,0).to("cpu"), bboxes)
+        # for x, y in test_loader:
+        #    x = x.to(DEVICE)
+        #    for idx in range(8):
+        #        bboxes = cellboxes_to_boxes(model(x))
+        #        bboxes = non_max_suppression(bboxes[idx], iou_threshold=0.5, threshold=0.4, box_format="midpoint")
+        #        plot_image(x[idx].permute(1,2,0).to("cpu"), bboxes)
 
-           import sys
-           sys.exit()
-
-        # pred_boxes, target_boxes = get_bboxes(
-        #     train_loader, model, iou_threshold=0.5, threshold=0.4
-        # )
-
-        # mean_avg_prec = mean_average_precision(
-        #     pred_boxes, target_boxes, iou_threshold=0.5, box_format="midpoint"
-        # )
-
-        # print("#######################\n")
-        # print("Stats for epoch", epoch)
-
-        # print(f"Train mAP: {mean_avg_prec}")
-
-        # # if epoch % 5 == 0: # evaluate model every 5 epochs
-
-        # pred_boxes_test, target_boxes_test = get_bboxes(
-        #     test_loader, model, iou_threshold=0.5, threshold=0.4
-        # )
-
-        # mean_anv_prec_test = mean_average_precision(
-        #     pred_boxes_test, target_boxes_test, iou_threshold=0.5, box_format="midpoint"
-        # )
-
-        # print(f"Test mAP: {mean_anv_prec_test}")
-
-        # torch.save(model.state_dict(), f"weights/ssd_lite_{epoch}.pht")
-
-        # print("#######################\n")
+        #    import sys
+        #    sys.exit()
 
         # if mean_anv_prec_test > best_prec_test:
         #     best_prec_test = mean_anv_prec_test
@@ -169,7 +139,37 @@ def main():
         #    import time
         #    time.sleep(10)
 
-        # train_fn(train_loader, model, optimizer, loss_fn)
+        train_fn(train_loader, model, optimizer, loss_fn)
+
+
+        pred_boxes, target_boxes = get_bboxes(
+            train_loader, model, iou_threshold=0.5, threshold=0.4
+        )
+
+        mean_avg_prec = mean_average_precision(
+            pred_boxes, target_boxes, iou_threshold=0.5, box_format="midpoint"
+        )
+
+        print("#######################\n")
+        print("Stats for epoch", epoch)
+
+        print(f"Train mAP: {mean_avg_prec}")
+
+        # # if epoch % 5 == 0: # evaluate model every 5 epochs
+
+        pred_boxes_test, target_boxes_test = get_bboxes(
+            test_loader, model, iou_threshold=0.5, threshold=0.4
+        )
+
+        mean_anv_prec_test = mean_average_precision(
+            pred_boxes_test, target_boxes_test, iou_threshold=0.5, box_format="midpoint"
+        )
+
+        print(f"Test mAP: {mean_anv_prec_test}")
+
+        torch.save(model.state_dict(), f"mobilessd_fpn/ssd_lite_{epoch}.pht")
+
+        print("#######################\n")
 
 
 if __name__ == "__main__":
