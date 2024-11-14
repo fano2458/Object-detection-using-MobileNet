@@ -81,14 +81,14 @@ def main():
 
     # TODO remove not needed classes from the dataset (by keeping only needed labels)
     train_dataset = VOCDataset(
-        "data/train.csv",
+        "data/train_new.csv",
         transform=transform,
         img_dir=IMG_DIR,
         label_dir=LABEL_DIR,
     )
 
     test_dataset = VOCDataset(
-        "data/test.csv", transform=transform, img_dir=IMG_DIR, label_dir=LABEL_DIR,
+        "data/test_new.csv", transform=transform, img_dir=IMG_DIR, label_dir=LABEL_DIR,
     )
 
     train_loader = DataLoader(
@@ -154,7 +154,7 @@ def main():
 
         torch.save(model.state_dict(), f"weights/ssd_lite_{epoch}.pht")
 
-        print("#######################\n")
+        # print("#######################\n")
 
         # if mean_anv_prec_test > best_prec_test:
         #     best_prec_test = mean_anv_prec_test
